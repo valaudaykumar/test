@@ -1,0 +1,43 @@
+
+Query 1 - Fetches all the contracts previously qualified as eligible for equipment consolidation and having total AR billed amount as zero(i.e not yet billed)
+Query 2 - Contracts currently qualified as eligible for consolidation.
+
+Query 1 minus Query 2 -  All the contracts identified previously as eligible for EQP consolidation which have not been billed yet but are not currently eligible for EQP consolidation.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+SELECT cg.region, cg.contract_number,cg.group_type,cg.mc_contract,cg.status,cg.lead_contract FROM fiowner.CONTRACT_GROUP cg,contract_f cf
+where cg.contract_number = cf.contract_nbr 
+and (nvl(ar_billed_ctd,0)+nvl(ar_billed_ctd_ew,0)) = 0
+and group_type = 'EQP'
+minus
+select region, contract_nbr,'EQP' group_type,mc_contract_number,status,contract_nbr lead_contract from (
+select ct.contract_nbr, count(distinct OM.SHIP_TO_COUNTRY || '-' || OM.SHIP_TO_STATE || '-' || OM.SHIP_TO_POSTAL_CODE),ct.status,ct.mc_contract_number,ct.region  from (SELECT *
+   FROM om_order_line oml
+  WHERE    NVL (oml.item_nbr, '0000') <> '9004'
+        OR (    oml.item_nbr = '9004'
+            AND oml.OM_LINE_STATUS != 'CANCELLED'
+            AND NOT EXISTS
+                       (SELECT *
+                          FROM om_order_line o1
+                         WHERE     1 = 1
+                               AND OM_LINE_STATUS != 'CANCELLED'
+                               AND o1.item_nbr <> '9004'
+                               AND oml.CONTRACT_NBR = o1.CONTRACT_NBR
+                               AND oml.YW_ORDER_NBR = o1.YW_ORDER_NBR))) om,contract ct
+where om.om_line_status != 'CANCELLED'
+and ct.contract_nbr = om.contract_nbr
+and ct.contract_nbr in (select c.contract_nbr from contract c, contract_f cf where contract_subtype='Pure Equipment' and cf.contract_nbr = c.contract_nbr 
+and nvl(cf.ar_billed_ctd, 0) = 0
+and c.status != ('CLOSED')
+and c.contract_nbr not like '_J%'
+and c.tax_code not in ('05', '15')
+and NVL(c.booked_prior_to_cb,'N') = 'N')
+group by ct.contract_nbr,ct.status,ct.mc_contract_number,ct.region
+having count(distinct SHIP_TO_COUNTRY || '-' || SHIP_TO_STATE || '-' || SHIP_TO_POSTAL_CODE) > 1)
+
+
+
+Including a line
