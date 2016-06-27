@@ -40,4 +40,4 @@ having count(distinct SHIP_TO_COUNTRY || '-' || SHIP_TO_STATE || '-' || SHIP_TO_
 
 
 
-Including a line
+Removed the line
